@@ -1,0 +1,61 @@
+# Deploy no servidor pessoal.
+#   - Traefik (rede externa "web") roteia por Host; HTTPS pela Cloudflare.
+#   - Mesmo domínio para site e API: /api/* vai para o container da API,
+#     o resto para o Next. Assim o cookie de sessão é first-party.
+#   - Mongo compartilhado do servidor (container `mongo` na rede externa "data").
+#   - Segredos no .env ao lado (chmod 600, fora do git).
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: bola-alta-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3334
+      MONGO_URI: ${MONGO_URI}
+      JWT_SECRET: ${JWT_SECRET}
+      APP_URL: https://${APP_DOMAIN}
+      APP_TIMEZONE: ${APP_TIMEZONE:-America/Sao_Paulo}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
+      VAPID_SUBJECT: ${VAPID_SUBJECT}
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.bola-alta-api.rule=Host(`${APP_DOMAIN}`) && PathPrefix(`/api`)'
+      - 'traefik.http.routers.bola-alta-api.entrypoints=web'
+      - 'traefik.http.routers.bola-alta-api.priority=10'
+      - 'traefik.http.services.bola-alta-api.loadbalancer.server.port=3334'
+    networks: [web, data]
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:3334/api/health']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: bola-alta-web
+    restart: unless-stopped
+    depends_on: [api]
+    environment:
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+      PORT: 3000
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.bola-alta-web.rule=Host(`${APP_DOMAIN}`)'
+      - 'traefik.http.routers.bola-alta-web.entrypoints=web'
+      - 'traefik.http.routers.bola-alta-web.priority=1'
+      - 'traefik.http.services.bola-alta-web.loadbalancer.server.port=3000'
+    networks: [web]
+
+networks:
+  web:
+    external: true
+  data:
+    external: true

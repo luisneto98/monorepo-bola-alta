@@ -1,0 +1,14 @@
+# Só o banco, para desenvolver local:
+#   npm run db:up
+services:
+  mongo:
+    image: mongo:7
+    container_name: bola-alta-mongo-dev
+    restart: unless-stopped
+    ports:
+      - '27019:27017'
+    volumes:
+      - bola-alta-mongo:/data/db
+
+volumes:
+  bola-alta-mongo:
