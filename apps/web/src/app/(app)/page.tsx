@@ -9,6 +9,7 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/providers/auth-provider';
 import { GameCard } from '@/components/game-card';
 import { NextGameHero } from '@/components/next-game-hero';
+import { InstallBanner } from '@/components/install-prompt';
 import { EmptyState, PageLoader, SectionTitle } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import type { Game } from '@/lib/types';
@@ -31,6 +32,8 @@ export default function PeladasPage() {
 
   return (
     <div className="space-y-5">
+      <InstallBanner />
+
       <div className="flex items-end justify-between gap-3">
         <div>
           <h1 className="heading text-3xl">Peladas</h1>

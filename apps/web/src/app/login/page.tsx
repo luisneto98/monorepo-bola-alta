@@ -8,6 +8,7 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/providers/auth-provider';
 import { AuthHero } from '@/components/auth-hero';
 import { ErrorText, Spinner } from '@/components/ui';
+import { InstallHint } from '@/components/install-prompt';
 import type { User } from '@/lib/types';
 
 export default function LoginPage() {
@@ -85,6 +86,10 @@ export default function LoginPage() {
             Cadastre-se
           </Link>
         </p>
+
+        <div className="border-t-2 border-line pt-2">
+          <InstallHint />
+        </div>
       </form>
     </AuthHero>
   );

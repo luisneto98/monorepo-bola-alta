@@ -23,7 +23,8 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: '/icons/icon-192.png',
-    apple: '/icons/icon-192.png',
+    // O iOS usa este ícone na tela inicial (180×180, sem transparência).
+    apple: '/icons/apple-touch-icon.png',
   },
 };
 

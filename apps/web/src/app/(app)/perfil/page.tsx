@@ -19,6 +19,7 @@ import {
   Spinner,
   SuccessText,
 } from '@/components/ui';
+import { InstallButton } from '@/components/install-prompt';
 import type { HistoryRow, PlayerPosition } from '@/lib/types';
 
 const POSITIONS: PlayerPosition[] = [
@@ -133,6 +134,18 @@ export default function PerfilPage() {
             Ativar
           </button>
         )}
+      </section>
+
+      {/* Instalação */}
+      <section className="panel space-y-3 p-4">
+        <div>
+          <p className="heading text-sm">App na tela inicial</p>
+          <p className="mt-1 text-xs text-fg-muted">
+            Instalado, o Bola Alta abre em tela cheia, sem barra de navegador — e é
+            assim que as notificações funcionam no iPhone.
+          </p>
+        </div>
+        <InstallButton />
       </section>
 
       {/* Dados */}
