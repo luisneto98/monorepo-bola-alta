@@ -1,65 +1,77 @@
 import type { Config } from 'tailwindcss';
 
+/** Tokens do design system — ver design-system/bola-alta-comunidade/MASTER.md */
 const config: Config = {
-  darkMode: 'class',
   content: ['./src/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
-        // Laranja da bola + azul de quadra.
+        canvas: '#0B1120',
+        surface: {
+          DEFAULT: '#141C2F',
+          high: '#1C2740',
+        },
+        line: {
+          DEFAULT: '#2C3A57',
+          soft: '#1F2A44',
+        },
+        fg: {
+          DEFAULT: '#F8FAFC',
+          muted: '#94A3B8',
+          dim: '#64748B',
+        },
+        // Laranja da bola.
         brand: {
-          50: '#fff7ed',
-          100: '#ffedd5',
-          200: '#fed7aa',
-          300: '#fdba74',
-          400: '#fb923c',
-          500: '#f97316',
-          600: '#ea580c',
-          700: '#c2410c',
-          800: '#9a3412',
-          900: '#7c2d12',
+          DEFAULT: '#F97316',
+          strong: '#EA580C',
+          soft: '#7C2D12',
         },
+        // Azul da quadra.
         court: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
+          DEFAULT: '#3B82F6',
+          strong: '#1D4ED8',
+          soft: '#1E3A8A',
         },
-        ink: {
-          50: '#f8fafc',
-          100: '#f1f5f9',
-          200: '#e2e8f0',
-          300: '#cbd5e1',
-          400: '#94a3b8',
-          500: '#64748b',
-          600: '#475569',
-          700: '#334155',
-          800: '#1e293b',
-          900: '#0f172a',
-          950: '#020617',
-        },
+        go: { DEFAULT: '#10B981', soft: '#064E3B' },
+        warn: { DEFAULT: '#FBBF24', soft: '#78350F' },
+        stop: { DEFAULT: '#F43F5E', soft: '#881337' },
       },
       fontFamily: {
         sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
         display: ['var(--font-display)', 'system-ui', 'sans-serif'],
       },
-      boxShadow: {
-        card: '0 1px 2px rgba(15,23,42,.06), 0 8px 24px -12px rgba(15,23,42,.18)',
+      borderRadius: {
+        none: '0',
+        DEFAULT: '0',
+        pill: '999px',
+      },
+      fontSize: {
+        display: ['clamp(2rem, 9vw, 3.5rem)', { lineHeight: '0.92', letterSpacing: '-0.03em' }],
+        score: ['clamp(2.5rem, 12vw, 4.5rem)', { lineHeight: '0.85', letterSpacing: '-0.04em' }],
       },
       keyframes: {
-        'fade-up': {
-          '0%': { opacity: '0', transform: 'translateY(8px)' },
-          '100%': { opacity: '1', transform: 'translateY(0)' },
+        marquee: {
+          from: { transform: 'translateX(0)' },
+          to: { transform: 'translateX(-50%)' },
+        },
+        'rise-in': {
+          from: { opacity: '0', transform: 'translateY(10px)' },
+          to: { opacity: '1', transform: 'translateY(0)' },
+        },
+        'slide-up': {
+          from: { transform: 'translateY(100%)' },
+          to: { transform: 'translateY(0)' },
+        },
+        'pulse-dot': {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.25' },
         },
       },
       animation: {
-        'fade-up': 'fade-up .28s ease-out both',
+        marquee: 'marquee 22s linear infinite',
+        'rise-in': 'rise-in .3s cubic-bezier(.2,.8,.2,1) both',
+        'slide-up': 'slide-up .25s cubic-bezier(.2,.8,.2,1) both',
+        'pulse-dot': 'pulse-dot 1.6s ease-in-out infinite',
       },
     },
   },

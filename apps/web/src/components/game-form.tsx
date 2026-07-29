@@ -118,7 +118,7 @@ export function GameForm({ game }: { game?: GameDetail }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      <div className="card space-y-4 p-4">
+      <div className="panel space-y-4 p-4">
         <div>
           <label className="label" htmlFor="title">
             Nome da pelada
@@ -164,7 +164,7 @@ export function GameForm({ game }: { game?: GameDetail }) {
         </div>
       </div>
 
-      <div className="card space-y-4 p-4">
+      <div className="panel space-y-4 p-4">
         <div>
           <label className="label" htmlFor="locationName">
             Quadra
@@ -180,7 +180,7 @@ export function GameForm({ game }: { game?: GameDetail }) {
         </div>
         <div>
           <label className="label" htmlFor="address">
-            Endereço <span className="font-normal text-ink-400">(opcional)</span>
+            Endereço <span className="font-normal text-fg-dim">(opcional)</span>
           </label>
           <input
             id="address"
@@ -192,7 +192,7 @@ export function GameForm({ game }: { game?: GameDetail }) {
         </div>
         <div>
           <label className="label" htmlFor="mapsUrl">
-            Link do mapa <span className="font-normal text-ink-400">(opcional)</span>
+            Link do mapa <span className="font-normal text-fg-dim">(opcional)</span>
           </label>
           <input
             id="mapsUrl"
@@ -205,7 +205,7 @@ export function GameForm({ game }: { game?: GameDetail }) {
         </div>
       </div>
 
-      <div className="card space-y-4 p-4">
+      <div className="panel space-y-4 p-4">
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="label" htmlFor="minPlayers">
@@ -234,7 +234,7 @@ export function GameForm({ game }: { game?: GameDetail }) {
             />
           </div>
         </div>
-        <p className="text-xs text-ink-400">
+        <p className="text-xs text-fg-dim">
           Vôlei de quadra: 12 é o mínimo natural (dois times de 6). Acima do máximo,
           quem confirmar entra na lista de espera.
         </p>
@@ -252,7 +252,7 @@ export function GameForm({ game }: { game?: GameDetail }) {
             value={form.cost}
             onChange={set('cost')}
           />
-          <p className="mt-1 text-xs text-ink-400">
+          <p className="mt-1 text-xs text-fg-dim">
             O valor por pessoa é o custo dividido pelos confirmados — recalcula
             sozinho conforme a galera confirma.
           </p>
@@ -260,7 +260,7 @@ export function GameForm({ game }: { game?: GameDetail }) {
 
         <div>
           <label className="label" htmlFor="notes">
-            Observações <span className="font-normal text-ink-400">(opcional)</span>
+            Observações <span className="font-normal text-fg-dim">(opcional)</span>
           </label>
           <textarea
             id="notes"

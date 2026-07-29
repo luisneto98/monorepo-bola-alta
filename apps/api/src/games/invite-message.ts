@@ -85,9 +85,13 @@ export function buildInviteMessage(input: InviteInput): string {
   }
 
   if (game.cost > 0) {
+    // Sem ninguém confirmado o rateio real seria zero — estimamos pelo mínimo.
+    const estimated = confirmed.length === 0;
+    const perPlayer = estimated ? game.cost / game.minPlayers : costPerPlayer;
+
     lines.push('');
     lines.push(
-      `💰 ${brl(costPerPlayer)} por pessoa (quadra ${brl(game.cost)} ÷ ${confirmed.length || game.minPlayers})`,
+      `💰 ${brl(perPlayer)} por pessoa${estimated ? ' (estimado)' : ''} (quadra ${brl(game.cost)} ÷ ${confirmed.length || game.minPlayers})`,
     );
     if (confirmed.length < game.maxPlayers) {
       lines.push('   _quanto mais gente, mais barato_');

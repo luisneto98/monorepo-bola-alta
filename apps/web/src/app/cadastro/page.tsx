@@ -79,7 +79,7 @@ export default function CadastroPage() {
 
         <div>
           <label className="label" htmlFor="phone">
-            WhatsApp <span className="font-normal text-ink-400">(opcional)</span>
+            WhatsApp <span className="font-normal text-fg-dim">(opcional)</span>
           </label>
           <input
             id="phone"
@@ -115,9 +115,9 @@ export default function CadastroPage() {
           {loading ? <Spinner /> : 'Criar conta'}
         </button>
 
-        <p className="text-center text-sm text-ink-500 dark:text-ink-400">
+        <p className="text-center text-sm text-fg-muted">
           Já tem conta?{' '}
-          <Link href="/login" className="font-semibold text-brand-600">
+          <Link href="/login" className="font-semibold text-brand">
             Entrar
           </Link>
         </p>

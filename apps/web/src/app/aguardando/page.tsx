@@ -30,13 +30,13 @@ export default function AguardandoPage() {
       <div className="space-y-5 text-center">
         <div className="flex justify-center">
           {rejected ? (
-            <XCircle className="h-14 w-14 text-red-500" />
+            <XCircle className="h-14 w-14 text-stop" />
           ) : (
-            <Clock className="h-14 w-14 text-brand-500" />
+            <Clock className="h-14 w-14 text-brand" />
           )}
         </div>
 
-        <p className="text-sm text-ink-600 dark:text-ink-300">
+        <p className="text-sm text-fg-muted">
           {rejected
             ? 'Seu cadastro não foi aprovado. Se achar que foi engano, chame alguém da organização no WhatsApp.'
             : `Oi, ${user.name.split(' ')[0]}! Seu cadastro chegou e está esperando aprovação. Assim que liberarem, você já vê as peladas e confirma presença.`}

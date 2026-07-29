@@ -1,14 +1,14 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, Archivo } from 'next/font/google';
+import { Inter, Space_Grotesk } from 'next/font/google';
 
 import './globals.css';
 import { AppProviders } from '@/providers/app-providers';
 import { ServiceWorkerRegister } from '@/components/service-worker-register';
 
 const sans = Inter({ subsets: ['latin'], variable: '--font-sans' });
-const display = Archivo({
+const display = Space_Grotesk({
   subsets: ['latin'],
-  weight: ['600', '700', '800'],
+  weight: ['500', '600', '700'],
   variable: '--font-display',
 });
 
@@ -28,10 +28,9 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#f97316',
+  themeColor: '#0B1120',
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
   viewportFit: 'cover',
 };
 

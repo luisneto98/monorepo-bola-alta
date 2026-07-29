@@ -79,9 +79,9 @@ export default function LoginPage() {
           {loading ? <Spinner /> : 'Entrar'}
         </button>
 
-        <p className="text-center text-sm text-ink-500 dark:text-ink-400">
+        <p className="text-center text-sm text-fg-muted">
           Ainda não tem conta?{' '}
-          <Link href="/cadastro" className="font-semibold text-brand-600">
+          <Link href="/cadastro" className="font-semibold text-brand">
             Cadastre-se
           </Link>
         </p>

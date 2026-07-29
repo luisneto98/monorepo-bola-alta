@@ -3,13 +3,19 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, Megaphone, ShieldCheck, Trash2, UserCheck, X } from 'lucide-react';
+import { Check, Megaphone, Trash2, X } from 'lucide-react';
 
 import { api } from '@/lib/api';
 import { useAuth } from '@/providers/auth-provider';
 import { brl } from '@/lib/format';
 import { cn } from '@/lib/cn';
-import { Avatar, ErrorText, PageLoader, Spinner } from '@/components/ui';
+import {
+  Avatar,
+  ErrorText,
+  PageLoader,
+  SectionTitle,
+  Spinner,
+} from '@/components/ui';
 import type { AdminSummary, User } from '@/lib/types';
 
 export default function AdminPage() {
@@ -73,59 +79,61 @@ export default function AdminPage() {
   const rejected = (users ?? []).filter((u) => u.status === 'REJECTED');
 
   return (
-    <div className="space-y-4">
-      <h1 className="font-display text-2xl font-extrabold tracking-tight">
-        Organização
-      </h1>
+    <div className="space-y-5">
+      <div>
+        <h1 className="heading text-3xl">Organização</h1>
+        <p className="mt-1 text-sm text-fg-muted">
+          Aprovações, caixa e recados da turma.
+        </p>
+      </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <Tile label="Aguardando aprovação" value={String(summary?.pendingUsers ?? 0)} />
+        <Tile
+          label="Aguardando"
+          value={String(summary?.pendingUsers ?? 0)}
+          tone={summary?.pendingUsers ? 'warn' : 'fg'}
+        />
         <Tile label="Peladas marcadas" value={String(summary?.upcomingGames ?? 0)} />
         <Tile
           label="A receber"
           value={brl(summary?.totalPendingAmount ?? 0)}
-          tone="warn"
+          tone={summary?.totalPendingAmount ? 'stop' : 'go'}
         />
-        <Tile label="Peladas realizadas" value={String(summary?.finishedGames ?? 0)} />
+        <Tile label="Já realizadas" value={String(summary?.finishedGames ?? 0)} />
       </div>
 
       <ErrorText>{error}</ErrorText>
 
       {/* Aprovações */}
-      <section className="card p-4">
-        <h2 className="mb-3 flex items-center gap-2 font-display text-sm font-bold uppercase tracking-wide text-ink-400">
-          <UserCheck className="h-4 w-4" />
-          Cadastros pendentes ({pending.length})
-        </h2>
+      <section className="panel p-4">
+        <SectionTitle>Cadastros pendentes · {pending.length}</SectionTitle>
 
         {pending.length === 0 ? (
-          <p className="py-3 text-center text-sm text-ink-400">
+          <p className="py-4 text-center text-sm text-fg-dim">
             Nada esperando aprovação.
           </p>
         ) : (
-          <ul className="divide-y divide-ink-100 dark:divide-ink-800">
+          <ul className="stagger divide-y-2 divide-line-soft">
             {pending.map((person) => {
               const personId = person.id ?? String(person._id);
               return (
                 <li key={personId} className="flex items-center gap-3 py-3">
-                  <Avatar name={person.name} />
+                  <Avatar name={person.name} tone="mute" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{person.name}</p>
-                    <p className="truncate text-xs text-ink-400">{person.email}</p>
+                    <p className="truncate text-xs text-fg-dim">{person.email}</p>
                   </div>
                   <button
-                    onClick={() =>
-                      setStatus.mutate({ id: personId, action: 'approve' })
-                    }
-                    className="btn bg-emerald-600 px-3 py-2 text-xs text-white"
+                    onClick={() => setStatus.mutate({ id: personId, action: 'approve' })}
+                    aria-label={`Aprovar ${person.name}`}
+                    className="btn border-go bg-go px-3 text-canvas hover:bg-go/80"
                   >
                     <Check className="h-4 w-4" />
                   </button>
                   <button
-                    onClick={() =>
-                      setStatus.mutate({ id: personId, action: 'reject' })
-                    }
-                    className="btn-ghost px-3 py-2 text-xs text-red-600"
+                    onClick={() => setStatus.mutate({ id: personId, action: 'reject' })}
+                    aria-label={`Recusar ${person.name}`}
+                    className="btn-danger px-3"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -138,21 +146,19 @@ export default function AdminPage() {
 
       {/* Devedores */}
       {summary && summary.debtors.length > 0 && (
-        <section className="card p-4">
-          <h2 className="mb-3 font-display text-sm font-bold uppercase tracking-wide text-ink-400">
-            Quem está devendo
-          </h2>
-          <ul className="divide-y divide-ink-100 dark:divide-ink-800">
+        <section className="panel p-4">
+          <SectionTitle>Quem está devendo</SectionTitle>
+          <ul className="divide-y-2 divide-line-soft">
             {summary.debtors.map((row) => (
               <li key={row.userId} className="flex items-center gap-3 py-2.5">
                 <Avatar name={row.name} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{row.name}</p>
-                  <p className="text-xs text-ink-400">
+                  <p className="text-xs text-fg-dim">
                     {row.pendingGames} pelada(s) em aberto
                   </p>
                 </div>
-                <span className="badge bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300">
+                <span className="font-display text-sm font-bold text-stop">
                   {brl(row.pendingAmount)}
                 </span>
               </li>
@@ -169,30 +175,25 @@ export default function AdminPage() {
       />
 
       {/* Comunidade */}
-      <section className="card p-4">
-        <h2 className="mb-3 flex items-center gap-2 font-display text-sm font-bold uppercase tracking-wide text-ink-400">
-          <ShieldCheck className="h-4 w-4" />
-          Comunidade ({approved.length})
-        </h2>
-        <ul className="divide-y divide-ink-100 dark:divide-ink-800">
+      <section className="panel p-4">
+        <SectionTitle>Comunidade · {approved.length}</SectionTitle>
+        <ul className="divide-y-2 divide-line-soft">
           {[...approved, ...rejected].map((person) => {
             const personId = person.id ?? String(person._id);
+            const isRejected = person.status === 'REJECTED';
             return (
               <li key={personId} className="flex items-center gap-3 py-2.5">
-                <Avatar
-                  name={person.name}
-                  className={person.status === 'REJECTED' ? 'bg-ink-400' : undefined}
-                />
+                <Avatar name={person.name} tone={isRejected ? 'mute' : 'court'} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">
                     {person.name}
-                    {person.status === 'REJECTED' && (
-                      <span className="ml-1.5 text-xs font-normal text-red-500">
+                    {isRejected && (
+                      <span className="ml-1.5 font-display text-[10px] uppercase tracking-wide text-stop">
                         recusado
                       </span>
                     )}
                   </p>
-                  <p className="truncate text-xs text-ink-400">{person.email}</p>
+                  <p className="truncate text-xs text-fg-dim">{person.email}</p>
                 </div>
 
                 {person.status === 'APPROVED' && (
@@ -203,13 +204,12 @@ export default function AdminPage() {
                         role: person.role === 'ADMIN' ? 'PLAYER' : 'ADMIN',
                       })
                     }
-                    className={cn(
-                      'badge',
-                      person.role === 'ADMIN'
-                        ? 'bg-brand-100 text-brand-700 dark:bg-brand-900/40 dark:text-brand-300'
-                        : 'bg-ink-200 text-ink-500 dark:bg-ink-800 dark:text-ink-400',
-                    )}
                     title="Alternar organizador"
+                    className={
+                      person.role === 'ADMIN'
+                        ? 'badge border-brand/60 bg-brand/15 text-brand'
+                        : 'badge-mute'
+                    }
                   >
                     {person.role === 'ADMIN' ? 'organizador' : 'jogador'}
                   </button>
@@ -221,7 +221,8 @@ export default function AdminPage() {
                       removeUser.mutate(personId);
                     }
                   }}
-                  className="text-ink-300 hover:text-red-600"
+                  aria-label={`Remover ${person.name}`}
+                  className="flex h-11 w-11 items-center justify-center text-fg-dim hover:text-stop"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -237,23 +238,25 @@ export default function AdminPage() {
 function Tile({
   label,
   value,
-  tone = 'ok',
+  tone = 'fg',
 }: {
   label: string;
   value: string;
-  tone?: 'ok' | 'warn';
+  tone?: 'fg' | 'warn' | 'stop' | 'go';
 }) {
   return (
-    <div className="card p-4">
+    <div className="panel p-4">
       <p
         className={cn(
-          'font-display text-2xl font-extrabold',
-          tone === 'warn' ? 'text-brand-600' : 'text-court-700 dark:text-court-400',
+          'font-display text-2xl font-bold leading-none',
+          tone === 'warn' && 'text-warn',
+          tone === 'stop' && 'text-stop',
+          tone === 'go' && 'text-go',
         )}
       >
         {value}
       </p>
-      <p className="text-xs text-ink-500 dark:text-ink-400">{label}</p>
+      <p className="eyebrow mt-2">{label}</p>
     </div>
   );
 }
@@ -271,14 +274,15 @@ function BroadcastCard({
   const [message, setMessage] = useState('');
 
   return (
-    <section className="card space-y-3 p-4">
-      <h2 className="flex items-center gap-2 font-display text-sm font-bold uppercase tracking-wide text-ink-400">
-        <Megaphone className="h-4 w-4" />
-        Recado para a turma
-      </h2>
+    <section className="panel space-y-3 p-4">
+      <SectionTitle>
+        <span className="flex items-center gap-1.5">
+          <Megaphone className="h-3.5 w-3.5" /> Recado para a turma
+        </span>
+      </SectionTitle>
       <input
         className="input"
-        placeholder="Título (ex.: Quadra mudou!)"
+        placeholder="Título (ex.: A quadra mudou)"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
       />
@@ -298,7 +302,7 @@ function BroadcastCard({
         disabled={sending || !title || !message}
         className="btn-court w-full"
       >
-        {sending ? <Spinner /> : sent ? 'Enviado!' : 'Enviar notificação'}
+        {sending ? <Spinner /> : sent ? 'Enviado' : 'Enviar notificação'}
       </button>
     </section>
   );

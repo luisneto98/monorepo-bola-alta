@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 
+import { VolleyballIcon } from './logo';
+
 export function AuthHero({
   title,
   subtitle,
@@ -10,34 +12,24 @@ export function AuthHero({
   children: ReactNode;
 }) {
   return (
-    <div className="relative min-h-dvh overflow-hidden bg-court-800">
-      {/* Linhas de quadra ao fundo */}
+    <div className="relative min-h-dvh overflow-hidden bg-canvas">
+      {/* Bloco diagonal de quadra */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-20"
-        style={{
-          backgroundImage:
-            'linear-gradient(to right, #fff 1px, transparent 1px), linear-gradient(to bottom, #fff 1px, transparent 1px)',
-          backgroundSize: '56px 56px',
-        }}
+        className="absolute -left-24 -top-32 h-80 w-[140%] -rotate-6 border-y-2 border-line bg-court/10"
       />
-      <div
-        aria-hidden
-        className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-brand-500/40 blur-3xl"
-      />
+      <div aria-hidden className="absolute -right-10 top-24 h-40 w-40 rotate-12 bg-brand/15" />
 
-      <div className="relative mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-5 py-10">
-        <div className="mb-7 text-center text-white">
-          <div className="mb-3 text-5xl">🏐</div>
-          <h1 className="font-display text-3xl font-extrabold tracking-tight">
-            {title}
-          </h1>
-          <p className="mt-2 text-sm text-white/70">{subtitle}</p>
+      <div className="relative mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-5 py-12">
+        <div className="mb-8">
+          <span className="mb-5 flex h-14 w-14 items-center justify-center bg-brand text-canvas">
+            <VolleyballIcon className="h-8 w-8" />
+          </span>
+          <h1 className="heading text-display">{title}</h1>
+          <p className="mt-2 max-w-xs text-sm text-fg-muted">{subtitle}</p>
         </div>
 
-        <div className="animate-fade-up rounded-3xl bg-white p-6 shadow-2xl dark:bg-ink-900">
-          {children}
-        </div>
+        <div className="panel animate-rise-in p-6">{children}</div>
       </div>
     </div>
   );

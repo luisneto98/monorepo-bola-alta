@@ -5,60 +5,146 @@
 @layer base {
   html {
     -webkit-tap-highlight-color: transparent;
+    color-scheme: dark;
   }
 
   body {
-    @apply bg-ink-50 text-ink-900 antialiased dark:bg-ink-950 dark:text-ink-100;
-    /* Respeita a área segura do iPhone quando instalado como PWA. */
-    padding-bottom: env(safe-area-inset-bottom);
+    @apply bg-canvas text-fg antialiased;
+    /* Textura sutil de linhas de quadra no fundo. */
+    background-image:
+      linear-gradient(to right, rgba(148, 163, 184, 0.045) 2px, transparent 2px),
+      linear-gradient(to bottom, rgba(148, 163, 184, 0.045) 2px, transparent 2px);
+    background-size: 72px 72px;
   }
 
-  /* Sem zoom automático no iOS ao focar um input. */
+  /* Sem zoom automático no iOS ao focar um campo. */
   input,
   select,
   textarea {
     font-size: 16px;
   }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-brand ring-offset-2 ring-offset-canvas;
+  }
+
+  ::selection {
+    @apply bg-brand text-canvas;
+  }
 }
 
 @layer components {
-  .card {
-    @apply rounded-2xl border border-ink-200 bg-white shadow-card dark:border-ink-800 dark:bg-ink-900;
+  /* ---------------------------------------------------------- superfícies */
+
+  .panel {
+    @apply border-2 border-line bg-surface;
   }
 
+  .panel-flat {
+    @apply border-2 border-line bg-surface/60;
+  }
+
+  /* Rótulo curto em caixa alta — a "etiqueta de placar" do app. */
+  .eyebrow {
+    @apply font-display text-[11px] font-bold uppercase tracking-[0.18em] text-fg-dim;
+  }
+
+  .heading {
+    @apply font-display font-extrabold uppercase tracking-tight;
+  }
+
+  /* ---------------------------------------------------------- formulário */
+
   .input {
-    @apply w-full rounded-xl border border-ink-300 bg-white px-4 py-3 text-ink-900 outline-none transition
-      placeholder:text-ink-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15
-      dark:border-ink-700 dark:bg-ink-950 dark:text-ink-100;
+    @apply w-full border-2 border-line bg-canvas px-4 py-3 text-fg outline-none transition-colors
+      placeholder:text-fg-dim focus:border-brand;
   }
 
   .label {
-    @apply mb-1.5 block text-sm font-medium text-ink-600 dark:text-ink-300;
+    @apply eyebrow mb-2 block;
   }
+
+  /* ---------------------------------------------------------- botões */
 
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold
-      transition active:scale-[.98] disabled:pointer-events-none disabled:opacity-50;
+    @apply inline-flex min-h-[48px] cursor-pointer select-none items-center justify-center gap-2
+      border-2 px-4 py-3 font-display text-sm font-bold uppercase tracking-wide
+      transition-colors duration-100 disabled:pointer-events-none disabled:opacity-40;
   }
 
+  /* Flood: o bloco inteiro inverte no toque, sem mexer no layout. */
   .btn-primary {
-    @apply btn bg-brand-500 text-white hover:bg-brand-600;
+    @apply btn border-brand bg-brand text-canvas hover:bg-brand-strong hover:border-brand-strong active:bg-fg active:border-fg;
   }
 
   .btn-court {
-    @apply btn bg-court-700 text-white hover:bg-court-800;
+    @apply btn border-court bg-court text-canvas hover:bg-court-strong hover:border-court-strong;
   }
 
   .btn-ghost {
-    @apply btn border border-ink-300 bg-white text-ink-700 hover:bg-ink-100
-      dark:border-ink-700 dark:bg-ink-900 dark:text-ink-200 dark:hover:bg-ink-800;
+    @apply btn border-line bg-transparent text-fg hover:bg-surface-high active:bg-brand active:border-brand active:text-canvas;
   }
 
   .btn-danger {
-    @apply btn bg-red-600 text-white hover:bg-red-700;
+    @apply btn border-stop bg-transparent text-stop hover:bg-stop hover:text-canvas;
   }
 
+  /* ---------------------------------------------------------- status */
+
   .badge {
-    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold;
+    @apply inline-flex items-center gap-1.5 border px-2 py-1 font-display text-[10px] font-bold uppercase tracking-[0.12em];
+  }
+
+  .badge-go {
+    @apply badge border-go/50 bg-go/15 text-go;
+  }
+
+  .badge-warn {
+    @apply badge border-warn/50 bg-warn/15 text-warn;
+  }
+
+  .badge-stop {
+    @apply badge border-stop/50 bg-stop/15 text-stop;
+  }
+
+  .badge-court {
+    @apply badge border-court/50 bg-court/15 text-court;
+  }
+
+  .badge-mute {
+    @apply badge border-line bg-surface-high text-fg-muted;
+  }
+}
+
+@layer utilities {
+  /* Entrada em cascata: cada item da lista atrasa 40ms. */
+  .stagger > * {
+    animation: rise-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .stagger > *:nth-child(1) { animation-delay: 0ms; }
+  .stagger > *:nth-child(2) { animation-delay: 40ms; }
+  .stagger > *:nth-child(3) { animation-delay: 80ms; }
+  .stagger > *:nth-child(4) { animation-delay: 120ms; }
+  .stagger > *:nth-child(5) { animation-delay: 160ms; }
+  .stagger > *:nth-child(6) { animation-delay: 200ms; }
+  .stagger > *:nth-child(n + 7) { animation-delay: 240ms; }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+/* Acessibilidade: quem pede menos movimento não recebe marquee nem cascata. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

@@ -8,7 +8,8 @@ import { CalendarDays, Plus } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/providers/auth-provider';
 import { GameCard } from '@/components/game-card';
-import { EmptyState, PageLoader } from '@/components/ui';
+import { NextGameHero } from '@/components/next-game-hero';
+import { EmptyState, PageLoader, SectionTitle } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import type { Game } from '@/lib/types';
 
@@ -23,12 +24,20 @@ export default function PeladasPage() {
     queryFn: () => api.get<Game[]>(`/games?scope=${scope}`),
   });
 
+  const isUpcoming = scope === 'upcoming';
+  // Na aba de próximas, a primeira vira destaque e sai da lista.
+  const [hero, ...rest] = isUpcoming ? (games ?? []) : [];
+  const list = isUpcoming ? rest : (games ?? []);
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="font-display text-2xl font-extrabold tracking-tight">
-          Peladas
-        </h1>
+    <div className="space-y-5">
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <h1 className="heading text-3xl">Peladas</h1>
+          <p className="mt-1 text-sm text-fg-muted">
+            Confirme presença e chame a turma.
+          </p>
+        </div>
         {isAdmin && (
           <Link href="/peladas/nova" className="btn-primary px-3 py-2 text-xs">
             <Plus className="h-4 w-4" />
@@ -37,7 +46,7 @@ export default function PeladasPage() {
         )}
       </div>
 
-      <div className="flex gap-1 rounded-xl bg-ink-200/70 p-1 dark:bg-ink-800/70">
+      <div className="flex border-2 border-line">
         {(
           [
             ['upcoming', 'Próximas'],
@@ -47,11 +56,12 @@ export default function PeladasPage() {
           <button
             key={value}
             onClick={() => setScope(value)}
+            aria-pressed={scope === value}
             className={cn(
-              'flex-1 rounded-lg py-2 text-sm font-semibold transition',
+              'min-h-[44px] flex-1 font-display text-xs font-bold uppercase tracking-[0.14em] transition-colors',
               scope === value
-                ? 'bg-white text-ink-900 shadow-sm dark:bg-ink-900 dark:text-white'
-                : 'text-ink-500 dark:text-ink-400',
+                ? 'bg-brand text-canvas'
+                : 'bg-transparent text-fg-dim hover:text-fg',
             )}
           >
             {label}
@@ -62,24 +72,35 @@ export default function PeladasPage() {
       {isLoading ? (
         <PageLoader />
       ) : games?.length ? (
-        <div className="space-y-3">
-          {games.map((game) => (
-            <GameCard key={game.id} game={game} />
-          ))}
+        <div className="space-y-5">
+          {hero && <NextGameHero game={hero} />}
+
+          {list.length > 0 && (
+            <section>
+              <SectionTitle>
+                {isUpcoming ? 'Também marcadas' : `${list.length} no histórico`}
+              </SectionTitle>
+              <div className="stagger space-y-3">
+                {list.map((game) => (
+                  <GameCard key={game.id} game={game} />
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       ) : (
         <EmptyState
-          icon={<CalendarDays className="h-10 w-10" />}
-          title={scope === 'upcoming' ? 'Nenhuma pelada marcada' : 'Nada no histórico ainda'}
+          icon={<CalendarDays className="h-10 w-10" strokeWidth={1.5} />}
+          title={isUpcoming ? 'Nenhuma pelada marcada' : 'Nada no histórico ainda'}
           description={
-            scope === 'upcoming'
+            isUpcoming
               ? isAdmin
                 ? 'Marque a próxima e chame a turma no WhatsApp.'
                 : 'Assim que o organizador marcar, aparece aqui.'
               : 'As peladas que já aconteceram vão ficar aqui.'
           }
           action={
-            isAdmin && scope === 'upcoming' ? (
+            isAdmin && isUpcoming ? (
               <Link href="/peladas/nova" className="btn-primary">
                 <Plus className="h-4 w-4" />
                 Marcar pelada

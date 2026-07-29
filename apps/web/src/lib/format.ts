@@ -13,6 +13,11 @@ const fmt = (date: string | Date, options: Intl.DateTimeFormatOptions) =>
 export const formatDay = (date: string | Date) =>
   fmt(date, { day: '2-digit', month: '2-digit', year: '2-digit' });
 
+export const formatDayNumber = (date: string | Date) => fmt(date, { day: '2-digit' });
+
+export const formatMonth = (date: string | Date) =>
+  fmt(date, { month: 'short' }).replace('.', '');
+
 export const formatTime = (date: string | Date) =>
   fmt(date, { hour: '2-digit', minute: '2-digit' });
 
@@ -45,6 +50,23 @@ export function toDatetimeLocal(date: Date) {
 
 function capitalize(text: string) {
   return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/**
+ * Valor por pessoa. Enquanto ninguém confirmou, o rateio real seria zero —
+ * o que não ajuda ninguém a decidir. Então mostramos a estimativa pelo mínimo.
+ */
+export function perPlayer(game: {
+  cost: number;
+  costPerPlayer: number;
+  confirmedCount: number;
+  minPlayers: number;
+}): { value: number; estimated: boolean } | null {
+  if (!game.cost) return null;
+  if (game.confirmedCount > 0) {
+    return { value: game.costPerPlayer, estimated: false };
+  }
+  return { value: game.cost / game.minPlayers, estimated: true };
 }
 
 export const POSITION_LABELS: Record<string, string> = {

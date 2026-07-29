@@ -40,22 +40,32 @@ export function InviteSheet({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center">
-      <div className="animate-fade-up flex max-h-[85dvh] w-full max-w-lg flex-col rounded-t-3xl bg-white p-5 dark:bg-ink-900 sm:rounded-3xl">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="font-display text-lg font-bold">Convite para o WhatsApp</h2>
-          <button onClick={onClose} className="rounded-full p-1 text-ink-400">
+    <div
+      role="dialog"
+      aria-modal
+      aria-label="Convite para o WhatsApp"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-canvas/80 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+      onClick={(event) => event.target === event.currentTarget && onClose()}
+    >
+      <div className="panel safe-bottom flex max-h-[88dvh] w-full max-w-lg animate-slide-up flex-col p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="heading text-lg">Convite pro grupo</h2>
+          <button
+            onClick={onClose}
+            aria-label="Fechar"
+            className="flex h-11 w-11 items-center justify-center text-fg-dim hover:text-fg"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {isLoading ? (
-          <div className="flex justify-center py-10">
+          <div className="flex justify-center py-12">
             <Spinner />
           </div>
         ) : (
           <>
-            <pre className="mb-4 flex-1 overflow-auto whitespace-pre-wrap rounded-2xl bg-ink-100 p-4 font-sans text-sm leading-relaxed text-ink-800 dark:bg-ink-950 dark:text-ink-200">
+            <pre className="mb-4 flex-1 overflow-auto whitespace-pre-wrap border-2 border-line bg-canvas p-4 font-sans text-sm leading-relaxed text-fg-muted">
               {message}
             </pre>
 
@@ -63,7 +73,7 @@ export function InviteSheet({
               <button onClick={copy} className="btn-ghost flex-1">
                 {copied ? (
                   <>
-                    <Check className="h-4 w-4 text-emerald-600" /> Copiado!
+                    <Check className="h-4 w-4 text-go" /> Copiado
                   </>
                 ) : (
                   <>
@@ -75,10 +85,10 @@ export function InviteSheet({
                 href={`https://wa.me/?text=${encodeURIComponent(message)}`}
                 target="_blank"
                 rel="noreferrer"
-                className="btn flex-1 bg-[#25D366] text-white"
+                className="btn flex-1 border-go bg-go text-canvas hover:bg-go/80"
               >
                 <MessageCircle className="h-4 w-4" />
-                Abrir WhatsApp
+                WhatsApp
               </a>
             </div>
           </>
