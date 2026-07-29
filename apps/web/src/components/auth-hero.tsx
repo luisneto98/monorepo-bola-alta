@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import { VolleyballIcon } from './logo';
+import { VolleyballMark } from './logo';
 
 export function AuthHero({
   title,
@@ -22,9 +22,7 @@ export function AuthHero({
 
       <div className="relative mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-5 py-12">
         <div className="mb-8">
-          <span className="mb-5 flex h-14 w-14 items-center justify-center bg-brand text-canvas">
-            <VolleyballIcon className="h-8 w-8" />
-          </span>
+          <VolleyballMark className="mb-5 h-16 w-16" />
           <h1 className="heading text-display">{title}</h1>
           <p className="mt-2 max-w-xs text-sm text-fg-muted">{subtitle}</p>
         </div>

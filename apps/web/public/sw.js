@@ -2,7 +2,7 @@
    - Cache só do "casco" do app; dados sempre vêm da rede.
    - Recebe as notificações push e abre a pelada certa no clique. */
 
-const CACHE = 'bola-alta-v1';
+const CACHE = 'bola-alta-v2';
 const SHELL = ['/', '/manifest.webmanifest', '/icons/icon-192.png'];
 
 self.addEventListener('install', (event) => {

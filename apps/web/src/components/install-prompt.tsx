@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Compass, Download, Share, SquarePlus, X } from 'lucide-react';
 
 import { useInstall, type InstallPlatform } from '@/hooks/use-install';
-import { VolleyballIcon } from './logo';
+import { VolleyballIcon, VolleyballMark } from './logo';
 
 /**
  * Convite para instalar o app.
@@ -28,9 +28,7 @@ export function InstallBanner() {
     <>
       <div className="panel mb-4 border-brand/60 bg-brand/10 p-4">
         <div className="flex items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center bg-brand text-canvas">
-            <VolleyballIcon className="h-6 w-6" />
-          </span>
+          <VolleyballMark className="h-11 w-11 shrink-0" />
           <div className="min-w-0 flex-1">
             <p className="heading text-sm">Use como app</p>
             <p className="mt-0.5 text-xs text-fg-muted">
