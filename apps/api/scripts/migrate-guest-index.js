@@ -1,5 +1,5 @@
 /**
- * Migração: presenças de convidado.
+ * Migração: presenças de convidado e aprovação de peladas.
  *
  * O índice `{ game: 1, user: 1 }` era unique simples. Como convidados não têm `user`,
  * o Mongo trataria todos como o mesmo `null` e recusaria o segundo convidado da
@@ -41,6 +41,16 @@ const ALVO = 'game_1_user_1';
 
   // Sem isto, `guest.nameKey` fica sem índice até a API subir; criar aqui é barato.
   await col.createIndex({ 'guest.nameKey': 1 });
+
+  // Peladas criadas antes da aprovação existir não têm o campo, e o default do
+  // schema só vale para documentos novos: sem isto elas somem da listagem de quem
+  // não é ADMIN, que passa a filtrar por approval APPROVED.
+  const games = client.db().collection('games');
+  const r = await games.updateMany(
+    { approval: { $exists: false } },
+    { $set: { approval: 'APPROVED' } },
+  );
+  console.log(`Peladas antigas marcadas como aprovadas: ${r.modifiedCount}`);
 
   console.log('\nÍndices agora:');
   for (const i of await col.indexes()) {
