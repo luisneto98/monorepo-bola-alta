@@ -11,6 +11,14 @@ export enum GameStatus {
   FINISHED = 'FINISHED',
 }
 
+/** Aprovação da pelada. Só existe porque qualquer um pode marcar pelo grupo. */
+export enum GameApproval {
+  /** Criada por quem não organiza — esperando um ADMIN aprovar no site. */
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+}
+
 export type GameDocument = HydratedDocument<Game>;
 
 @Schema({ _id: false })
@@ -81,6 +89,31 @@ export class Game {
   /** Preenchido quando a pelada nasce (ou é vinculada) a um grupo de WhatsApp. */
   @Prop({ type: GameWhatsapp })
   whatsapp?: GameWhatsapp;
+
+  /**
+   * Pelada criada por ADMIN já nasce aprovada; criada por jogador comum (pelo
+   * grupo do WhatsApp) fica pendente até alguém que organiza liberar.
+   */
+  @Prop({
+    type: String,
+    enum: GameApproval,
+    default: GameApproval.APPROVED,
+    index: true,
+  })
+  approval: GameApproval;
+
+  /** Quem pediu a pelada — pode não ser quem aprovou. */
+  @Prop({ type: String })
+  requestedBy?: string;
+
+  @Prop({ type: String })
+  approvedBy?: string;
+
+  @Prop({ type: Date })
+  approvedAt?: Date;
+
+  @Prop({ trim: true })
+  rejectReason?: string;
 
   @Prop({ type: Date })
   canceledAt?: Date;

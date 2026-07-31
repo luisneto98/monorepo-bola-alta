@@ -6,7 +6,12 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 
-import { Game, GameDocument, GameStatus } from './schemas/game.schema';
+import {
+  Game,
+  GameApproval,
+  GameDocument,
+  GameStatus,
+} from './schemas/game.schema';
 import {
   Attendance,
   AttendanceDocument,
@@ -34,6 +39,9 @@ export interface GameView {
   cancelReason?: string;
   /** Grupo de WhatsApp vinculado — onde o bot manda as atualizações. */
   whatsapp?: { chatId: string; groupName?: string };
+  approval: GameApproval;
+  requestedBy?: string;
+  rejectReason?: string;
   confirmedCount: number;
   waitlistCount: number;
   spotsLeft: number;
@@ -61,22 +69,60 @@ export class GamesService {
 
   // ---------------------------------------------------------------- CRUD
 
-  async create(dto: CreateGameDto, adminId: string) {
+  async create(dto: CreateGameDto, userId: string, isAdmin = true) {
     const min = dto.minPlayers ?? 12;
     const max = dto.maxPlayers ?? 18;
     if (max < min) {
       throw new BadRequestException('O máximo não pode ser menor que o mínimo.');
     }
 
+    // Qualquer jogador pode marcar pelada pelo grupo, mas só vale depois que
+    // alguém que organiza aprovar — senão qualquer um compromete a quadra.
+    const approval = isAdmin ? GameApproval.APPROVED : GameApproval.PENDING;
+
     const game = await this.gameModel.create({
       ...dto,
       date: new Date(dto.date),
       minPlayers: min,
       maxPlayers: max,
-      createdBy: adminId,
+      createdBy: userId,
+      requestedBy: userId,
+      approval,
+      ...(isAdmin ? { approvedBy: userId, approvedAt: new Date() } : {}),
       status: GameStatus.PENDING,
     });
 
+    // Pelada pendente não avisa a turma: ninguém deve se organizar em cima de
+    // algo que ainda pode ser recusado.
+    if (approval === GameApproval.APPROVED) {
+      await this.push.broadcast(
+        {
+          title: '🏐 Nova pelada marcada!',
+          body: `${game.title} — ${this.formatShort(game.date)} em ${game.location.name}`,
+          url: `/peladas/${game._id}`,
+        },
+        { exceptUserId: userId },
+      );
+    }
+
+    return this.toView(game.toObject(), userId);
+  }
+
+  /** Libera uma pelada pedida por quem não organiza. */
+  async approve(id: string, adminId: string) {
+    const game = await this.gameModel.findById(id);
+    if (!game) throw new NotFoundException('Pelada não encontrada.');
+    if (game.approval === GameApproval.APPROVED) {
+      throw new BadRequestException('Essa pelada já está aprovada.');
+    }
+
+    game.approval = GameApproval.APPROVED;
+    game.approvedBy = adminId;
+    game.approvedAt = new Date();
+    game.rejectReason = undefined;
+    await game.save();
+
+    // Só agora a turma fica sabendo.
     await this.push.broadcast(
       {
         title: '🏐 Nova pelada marcada!',
@@ -86,7 +132,20 @@ export class GamesService {
       { exceptUserId: adminId },
     );
 
-    return this.toView(game.toObject(), adminId);
+    return this.findOne(id, adminId);
+  }
+
+  async reject(id: string, reason: string | undefined, adminId: string) {
+    const game = await this.gameModel.findById(id);
+    if (!game) throw new NotFoundException('Pelada não encontrada.');
+
+    game.approval = GameApproval.REJECTED;
+    game.rejectReason = reason;
+    game.approvedBy = adminId;
+    game.approvedAt = new Date();
+    await game.save();
+
+    return this.findOne(id, adminId);
   }
 
   async update(id: string, dto: UpdateGameDto, userId: string) {
@@ -166,6 +225,7 @@ export class GamesService {
     scope: 'upcoming' | 'past' | 'all',
     userId: string,
     chatId?: string,
+    isAdmin = false,
   ) {
     const now = new Date();
     const byScope =
@@ -176,7 +236,13 @@ export class GamesService {
           : {};
 
     // O bot pergunta "qual a pelada deste grupo?" — sem isso ele veria as de todos.
-    const filter = chatId ? { ...byScope, 'whatsapp.chatId': chatId } : byScope;
+    const byChat = chatId ? { ...byScope, 'whatsapp.chatId': chatId } : byScope;
+
+    // Quem organiza vê o que está esperando aprovação; o resto da turma só vê o
+    // que já foi liberado (e a recusada não aparece para ninguém na lista).
+    const filter = isAdmin
+      ? { ...byChat, approval: { $ne: GameApproval.REJECTED } }
+      : { ...byChat, approval: GameApproval.APPROVED };
 
     const games = await this.gameModel
       .find(filter)
@@ -755,6 +821,9 @@ export class GamesService {
       notes: game.notes,
       cancelReason: game.cancelReason,
       whatsapp: game.whatsapp,
+      approval: game.approval ?? GameApproval.APPROVED,
+      requestedBy: game.requestedBy,
+      rejectReason: game.rejectReason,
       confirmedCount: confirmed.length,
       waitlistCount: waitlist.length,
       spotsLeft: Math.max(0, game.maxPlayers - confirmed.length),

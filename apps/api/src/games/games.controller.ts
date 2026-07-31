@@ -28,7 +28,7 @@ export class GamesController {
     @Query('scope') scope: 'upcoming' | 'past' | 'all' = 'upcoming',
     @Query('chatId') chatId?: string,
   ) {
-    return this.games.list(scope, user.id, chatId);
+    return this.games.list(scope, user.id, chatId, user.role === UserRole.ADMIN);
   }
 
   @Get(':id')
@@ -41,10 +41,31 @@ export class GamesController {
     return this.games.invite(id, process.env.APP_URL ?? 'http://localhost:3000');
   }
 
-  @Roles(UserRole.ADMIN)
+  /**
+   * Qualquer jogador aprovado pode marcar pelada (inclusive pelo grupo do
+   * WhatsApp). Se não for ADMIN, ela nasce pendente de aprovação.
+   */
   @Post()
   create(@Body() dto: CreateGameDto, @CurrentUser() user: AuthUser) {
-    return this.games.create(dto, user.id);
+    return this.games.create(dto, user.id, user.role === UserRole.ADMIN);
+  }
+
+  @Roles(UserRole.ADMIN)
+  @HttpCode(200)
+  @Post(':id/approve')
+  approve(@Param('id') id: string, @CurrentUser() admin: AuthUser) {
+    return this.games.approve(id, admin.id);
+  }
+
+  @Roles(UserRole.ADMIN)
+  @HttpCode(200)
+  @Post(':id/reject')
+  reject(
+    @Param('id') id: string,
+    @Body('reason') reason: string,
+    @CurrentUser() admin: AuthUser,
+  ) {
+    return this.games.reject(id, reason, admin.id);
   }
 
   @Roles(UserRole.ADMIN)
