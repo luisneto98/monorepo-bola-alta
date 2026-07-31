@@ -15,6 +15,8 @@ import {
 import { User, UserDocument, UserStatus } from '../users/schemas/user.schema';
 import { CreateGameDto } from './dto/create-game.dto';
 import { UpdateGameDto } from './dto/update-game.dto';
+import { SyncRosterDto } from './dto/sync-roster.dto';
+import { firstNameKey, nameKey } from '../common/name-key';
 import { PushService } from '../push/push.service';
 import { buildInviteMessage } from './invite-message';
 
@@ -123,7 +125,8 @@ export class GamesService {
       .lean();
 
     await this.push.sendToUsers(
-      players.map((p) => String(p.user)),
+      // Convidados não têm conta, logo não têm push.
+      players.filter((p) => p.user).map((p) => String(p.user)),
       {
         title: '❌ Pelada cancelada',
         body: `${game.title} — ${this.formatShort(game.date)}${reason ? `: ${reason}` : ''}`,
@@ -207,6 +210,281 @@ export class GamesService {
     });
 
     return { message };
+  }
+
+  // -------------------------------------------------- Lista do WhatsApp
+
+  /**
+   * Reconcilia a pelada com a lista COMPLETA colada no grupo.
+   *
+   * A lista é reenviada atualizada várias vezes por semana, então ela manda: quem
+   * está nela fica, quem saiu vira OUT (jogador) ou some (convidado). Isso torna a
+   * operação idempotente — rodar duas vezes com a mesma lista não muda nada.
+   *
+   * Nomes são casados com jogadores cadastrados; o que não casa vira convidado.
+   * Com `dryRun`, nada é gravado e o retorno serve para confirmação no grupo.
+   */
+  async syncRoster(gameId: string, dto: SyncRosterDto, adminId: string) {
+    const game = await this.gameModel.findById(gameId);
+    if (!game) throw new NotFoundException('Pelada não encontrada.');
+    if (game.status === GameStatus.CANCELED) {
+      throw new BadRequestException('Essa pelada foi cancelada.');
+    }
+
+    const users = await this.userModel
+      .find({ status: UserStatus.APPROVED })
+      .select('name')
+      .lean();
+
+    // Um nome pode casar com mais de um cadastrado; guardamos todos para detectar
+    // ambiguidade em vez de escolher no chute.
+    const byName = new Map<string, typeof users>();
+    for (const u of users) {
+      for (const key of new Set([nameKey(u.name), firstNameKey(u.name)])) {
+        if (!key) continue;
+        byName.set(key, [...(byName.get(key) ?? []), u]);
+      }
+    }
+
+    const takenUsers = new Set<string>();
+    const resolved: Array<{
+      entry: (typeof dto.entries)[number];
+      key: string;
+      user: { _id: any; name: string } | null;
+      ambiguousWith?: string[];
+    }> = [];
+
+    for (const entry of dto.entries) {
+      const key = nameKey(entry.name);
+      const candidates = (byName.get(key) ?? byName.get(firstNameKey(entry.name)) ?? [])
+        // Dois "Eduardo" na lista e um só cadastrado: o primeiro leva a conta, o
+        // segundo vira convidado. Sem isso, um sobrescreveria o outro.
+        .filter((u) => !takenUsers.has(String(u._id)));
+
+      if (candidates.length === 1) {
+        takenUsers.add(String(candidates[0]._id));
+        resolved.push({ entry, key, user: candidates[0] as any });
+      } else {
+        resolved.push({
+          entry,
+          key,
+          user: null,
+          ambiguousWith:
+            candidates.length > 1 ? candidates.map((u) => u.name) : undefined,
+        });
+      }
+    }
+
+    const existing = await this.attendanceModel
+      .find({ game: game._id })
+      .sort({ joinedAt: 1 })
+      .lean();
+
+    const existingByUser = new Map(
+      existing.filter((a) => a.user).map((a) => [String(a.user), a]),
+    );
+    // Convidados são casados por nome, em ordem: dois "Eduardo" ocupam dois slots.
+    const guestPool = new Map<string, typeof existing>();
+    for (const a of existing.filter((x) => x.guest)) {
+      const k = a.guest!.nameKey;
+      guestPool.set(k, [...(guestPool.get(k) ?? []), a]);
+    }
+
+    const plan = {
+      matched: [] as Array<{ name: string; userId: string; paid: boolean }>,
+      guests: [] as Array<{ name: string; paid: boolean; isNew: boolean }>,
+      ambiguous: [] as Array<{ name: string; candidates: string[] }>,
+      removed: [] as Array<{ name: string; isGuest: boolean }>,
+      /** Situações que a lista não resolve sozinha e pedem olho humano. */
+      warnings: [] as string[],
+    };
+
+    const keptAttendanceIds = new Set<string>();
+    const writes: Array<() => Promise<unknown>> = [];
+
+    resolved.forEach((r, index) => {
+      const paid = r.entry.paid ?? false;
+      // A ordem da lista define quem fica de fora quando passa do máximo.
+      const status =
+        index < game.maxPlayers
+          ? AttendanceStatus.CONFIRMED
+          : AttendanceStatus.WAITLIST;
+
+      if (r.user) {
+        const userId = String(r.user._id);
+        const current = existingByUser.get(userId);
+        if (current) keptAttendanceIds.add(String(current._id));
+        plan.matched.push({ name: r.user.name, userId, paid });
+
+        writes.push(() =>
+          this.attendanceModel.findOneAndUpdate(
+            { game: game._id, user: new Types.ObjectId(userId) },
+            {
+              $set: { status, paid, noShow: false, ...(paid ? {} : { paidAt: null }) },
+              $setOnInsert: { joinedAt: new Date() },
+            },
+            { upsert: true },
+          ),
+        );
+        return;
+      }
+
+      if (r.ambiguousWith) {
+        plan.ambiguous.push({ name: r.entry.name, candidates: r.ambiguousWith });
+      }
+
+      const pool = guestPool.get(r.key) ?? [];
+      const current = pool.shift(); // consome um slot deste nome
+      guestPool.set(r.key, pool);
+      if (current) keptAttendanceIds.add(String(current._id));
+
+      plan.guests.push({ name: r.entry.name, paid, isNew: !current });
+
+      writes.push(() =>
+        current
+          ? this.attendanceModel.updateOne(
+              { _id: current._id },
+              { $set: { status, paid, ...(paid ? {} : { paidAt: null }) } },
+            )
+          : this.attendanceModel.create({
+              game: game._id,
+              guest: {
+                name: r.entry.name.trim(),
+                nameKey: r.key,
+                phone: r.entry.phone?.replace(/\D/g, ''),
+                lid: r.entry.lid,
+                invitedBy: r.entry.invitedBy
+                  ? new Types.ObjectId(r.entry.invitedBy)
+                  : undefined,
+                source: 'whatsapp',
+              },
+              status,
+              paid,
+              joinedAt: new Date(),
+            }),
+      );
+    });
+
+    // Quem sumiu da lista: jogador vira OUT (conta como desistência no histórico),
+    // convidado é apagado — não tem histórico próprio para preservar.
+    for (const a of existing) {
+      if (keptAttendanceIds.has(String(a._id))) continue;
+      const isGuest = !a.user;
+      const name = isGuest
+        ? (a.guest?.name ?? 'Sem nome')
+        : ((users.find((u) => String(u._id) === String(a.user)) as any)?.name ??
+          'Jogador');
+
+      if (a.paid) {
+        // Quem já pagou não sai sozinho: some da lista por erro de digitação e a
+        // remoção automática apagaria o pagamento. Fica, e o admin decide.
+        plan.warnings.push(
+          `${name} saiu da lista mas consta como pago — mantido na pelada, confira.`,
+        );
+        continue;
+      }
+
+      plan.removed.push({ name, isGuest });
+      writes.push(() =>
+        isGuest
+          ? this.attendanceModel.deleteOne({ _id: a._id })
+          : this.attendanceModel.updateOne(
+              { _id: a._id },
+              { $set: { status: AttendanceStatus.OUT, paid: false, paidAt: null } },
+            ),
+      );
+    }
+
+    const summary = {
+      dryRun: !!dto.dryRun,
+      total: dto.entries.length,
+      matchedCount: plan.matched.length,
+      guestCount: plan.guests.length,
+      newGuestCount: plan.guests.filter((g) => g.isNew).length,
+      removedCount: plan.removed.length,
+      ...plan,
+    };
+
+    if (dto.dryRun) return { ...summary, game: await this.toView(game.toObject(), adminId) };
+
+    for (const write of writes) await write();
+    // `rebalance` (e não `refreshStatus`) porque quem foi mantido apesar de ter saído
+    // da lista pode estourar o máximo — aí o excedente vai para a espera por ordem de
+    // chegada, em vez de a pelada ficar com "15/14 confirmados".
+    await this.rebalance(game);
+
+    return { ...summary, ...(await this.findOne(gameId, adminId)) };
+  }
+
+  /** Presenças de convidado cujo nome bate com o de um jogador cadastrado. */
+  async guestCandidates(userId: string) {
+    const user = await this.userModel.findById(userId).select('name').lean();
+    if (!user) throw new NotFoundException('Usuário não encontrado.');
+
+    const keys = [...new Set([nameKey(user.name), firstNameKey(user.name)])].filter(
+      Boolean,
+    );
+
+    const rows = await this.attendanceModel
+      .find({ 'guest.nameKey': { $in: keys } })
+      .populate('game', 'title date')
+      .sort({ joinedAt: -1 })
+      .lean();
+
+    return rows.map((r) => ({
+      attendanceId: String(r._id),
+      guestName: r.guest?.name,
+      invitedBy: r.guest?.invitedBy ? String(r.guest.invitedBy) : null,
+      game: {
+        id: String((r.game as any)?._id),
+        title: (r.game as any)?.title,
+        date: (r.game as any)?.date,
+      },
+      status: r.status,
+      paid: r.paid,
+    }));
+  }
+
+  /**
+   * Vincula presenças de convidado a uma conta — o histórico passa a contar para ela.
+   * Decisão de um admin, nunca automática: nome igual não é prova de mesma pessoa.
+   */
+  async claimGuest(userId: string, attendanceIds: string[]) {
+    const user = await this.userModel.findById(userId).lean();
+    if (!user) throw new NotFoundException('Usuário não encontrado.');
+
+    const ids = attendanceIds.map((id) => new Types.ObjectId(id));
+    const rows = await this.attendanceModel.find({ _id: { $in: ids } }).lean();
+
+    let claimed = 0;
+    const skipped: Array<{ attendanceId: string; reason: string }> = [];
+
+    for (const row of rows) {
+      if (row.user) {
+        skipped.push({ attendanceId: String(row._id), reason: 'já tem dono' });
+        continue;
+      }
+      // A pessoa não pode aparecer duas vezes na mesma pelada.
+      const clash = await this.attendanceModel.exists({
+        game: row.game,
+        user: new Types.ObjectId(userId),
+      });
+      if (clash) {
+        skipped.push({
+          attendanceId: String(row._id),
+          reason: 'já está nessa pelada com a própria conta',
+        });
+        continue;
+      }
+
+      await this.attendanceModel.updateOne(
+        { _id: row._id },
+        { $set: { user: new Types.ObjectId(userId) }, $unset: { guest: '' } },
+      );
+      claimed++;
+    }
+
+    return { claimed, skipped };
   }
 
   // ------------------------------------------------------- Presença
@@ -338,11 +616,14 @@ export class GamesService {
       await next.save();
       confirmed += 1;
 
-      await this.push.sendToUsers([String(next.user)], {
-        title: '🎉 Abriu vaga pra você!',
-        body: `Você saiu da lista de espera de ${game.title} — ${this.formatShort(game.date)}`,
-        url: `/peladas/${game._id}`,
-      });
+      // Convidado sobe da espera igual, mas não há para quem notificar.
+      if (next.user) {
+        await this.push.sendToUsers([String(next.user)], {
+          title: '🎉 Abriu vaga pra você!',
+          body: `Você saiu da lista de espera de ${game.title} — ${this.formatShort(game.date)}`,
+          url: `/peladas/${game._id}`,
+        });
+      }
     }
   }
 
@@ -381,7 +662,8 @@ export class GamesService {
         .find({ game: game._id, status: AttendanceStatus.CONFIRMED })
         .lean();
       await this.push.sendToUsers(
-        players.map((p) => String(p.user)),
+        // Convidados não têm conta, logo não têm push.
+        players.filter((p) => p.user).map((p) => String(p.user)),
         {
           title: '✅ Pelada confirmada!',
           body: `${game.title} — ${this.formatShort(game.date)} bateu o mínimo de ${game.minPlayers} jogadores.`,
@@ -405,21 +687,27 @@ export class GamesService {
       .populate('user', 'name email phone position level')
       .lean();
 
-    return rows
-      .filter((r) => r.user)
-      .map((r, index) => ({
-        userId: String((r.user as any)._id),
-        name: (r.user as any).name,
-        phone: (r.user as any).phone,
-        position: (r.user as any).position,
-        level: (r.user as any).level,
+    // Convidados entram na lista como todo mundo: aparecem no convite, contam no
+    // rateio e ocupam vaga. O que muda é que não têm conta por trás.
+    return rows.map((r, index) => {
+      const u = r.user as any;
+      return {
+        userId: u ? String(u._id) : null,
+        name: u ? u.name : (r.guest?.name ?? 'Sem nome'),
+        phone: u ? u.phone : r.guest?.phone,
+        position: u ? u.position : undefined,
+        level: u ? u.level : undefined,
+        isGuest: !u,
+        invitedBy: r.guest?.invitedBy ? String(r.guest.invitedBy) : null,
+        attendanceId: String(r._id),
         status: r.status,
         paid: r.paid,
         paidAt: r.paidAt,
         noShow: r.noShow,
         joinedAt: r.joinedAt,
         order: index + 1,
-      }));
+      };
+    });
   }
 
   private costPerPlayer(cost: number, confirmedCount: number) {
