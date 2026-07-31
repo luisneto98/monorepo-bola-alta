@@ -392,7 +392,9 @@ export default function PeladaPage() {
       {showAddPlayer && (
         <AddPlayerSheet
           gameId={id}
-          taken={[...game.confirmed, ...game.waitlist].map((p) => p.userId)}
+          taken={[...game.confirmed, ...game.waitlist]
+            .map((p) => p.userId)
+            .filter((id): id is string => !!id)}
           onDone={invalidate}
           onClose={() => setShowAddPlayer(false)}
         />
@@ -473,15 +475,18 @@ function PlayerList({
                   )}
                 </p>
                 <p className="truncate text-xs text-fg-dim">
-                  {POSITION_LABELS[player.position] ?? 'Sem posição fixa'}
+                  {player.isGuest
+                    ? 'Convidado'
+                    : (player.position && POSITION_LABELS[player.position]) ||
+                      'Sem posição fixa'}
                   {player.noShow && ' · faltou'}
                 </p>
               </div>
 
               {showPayment &&
-                (isAdmin ? (
+                (isAdmin && player.userId ? (
                   <button
-                    onClick={() => onTogglePaid(player.userId, !player.paid)}
+                    onClick={() => onTogglePaid(player.userId!, !player.paid)}
                     className={player.paid ? 'badge-go' : 'badge-mute'}
                   >
                     {player.paid ? (
@@ -500,11 +505,11 @@ function PlayerList({
                   )
                 ))}
 
-              {isAdmin && player.userId !== currentUserId && (
+              {isAdmin && player.userId && player.userId !== currentUserId && (
                 <button
                   onClick={() => {
                     if (window.confirm(`Tirar ${player.name} da pelada?`)) {
-                      onRemove(player.userId);
+                      onRemove(player.userId!);
                     }
                   }}
                   aria-label={`Remover ${player.name}`}

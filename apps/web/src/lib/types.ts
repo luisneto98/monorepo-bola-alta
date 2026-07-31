@@ -30,6 +30,8 @@ export interface GameLocation {
   mapsUrl?: string;
 }
 
+export type GameApproval = 'PENDING' | 'APPROVED' | 'REJECTED';
+
 export interface Game {
   id: string;
   title: string;
@@ -42,6 +44,12 @@ export interface Game {
   status: GameStatus;
   notes?: string;
   cancelReason?: string;
+  /** Pelada marcada por quem não organiza fica PENDING até um admin liberar. */
+  approval: GameApproval;
+  requestedBy?: string;
+  rejectReason?: string;
+  /** Grupo de WhatsApp de onde veio, quando marcada pelo bot. */
+  whatsapp?: { chatId: string; groupName?: string };
   confirmedCount: number;
   waitlistCount: number;
   spotsLeft: number;
@@ -57,11 +65,15 @@ export interface Game {
 }
 
 export interface GamePlayer {
-  userId: string;
+  /** null quando é convidado — alguém da lista que ainda não tem conta. */
+  userId: string | null;
   name: string;
   phone?: string;
-  position: PlayerPosition;
-  level: number;
+  isGuest?: boolean;
+  invitedBy?: string | null;
+  attendanceId?: string;
+  position?: PlayerPosition;
+  level?: number;
   status: AttendanceStatus;
   paid: boolean;
   paidAt?: string;

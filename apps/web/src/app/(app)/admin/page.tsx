@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, Megaphone, Trash2, X } from 'lucide-react';
+import { CalendarClock, Check, Megaphone, Trash2, X } from 'lucide-react';
 
 import { api } from '@/lib/api';
 import { useAuth } from '@/providers/auth-provider';
@@ -16,7 +16,7 @@ import {
   SectionTitle,
   Spinner,
 } from '@/components/ui';
-import type { AdminSummary, User } from '@/lib/types';
+import type { AdminSummary, Game, User } from '@/lib/types';
 
 export default function AdminPage() {
   const { isAdmin, isLoading } = useAuth();
@@ -38,6 +38,25 @@ export default function AdminPage() {
     queryKey: ['users'],
     queryFn: () => api.get<User[]>('/users'),
     enabled: isAdmin,
+  });
+
+  // O bot deixa aqui o que a turma marcou pelo grupo do WhatsApp.
+  const { data: games } = useQuery({
+    queryKey: ['games', 'all'],
+    queryFn: () => api.get<Game[]>('/games?scope=all'),
+    enabled: isAdmin,
+  });
+
+  const refetchGames = () => {
+    queryClient.invalidateQueries({ queryKey: ['games'] });
+    queryClient.invalidateQueries({ queryKey: ['admin-summary'] });
+  };
+
+  const setGameApproval = useMutation({
+    mutationFn: ({ id, action }: { id: string; action: 'approve' | 'reject' }) =>
+      api.post(`/games/${id}/${action}`),
+    onSuccess: refetchGames,
+    onError: (err: Error) => setError(err.message),
   });
 
   const refetchAll = () => {
@@ -74,6 +93,7 @@ export default function AdminPage() {
 
   if (isLoading || !isAdmin) return <PageLoader />;
 
+  const pendingGames = (games ?? []).filter((g) => g.approval === 'PENDING');
   const pending = (users ?? []).filter((u) => u.status === 'PENDING');
   const approved = (users ?? []).filter((u) => u.status === 'APPROVED');
   const rejected = (users ?? []).filter((u) => u.status === 'REJECTED');
@@ -93,7 +113,11 @@ export default function AdminPage() {
           value={String(summary?.pendingUsers ?? 0)}
           tone={summary?.pendingUsers ? 'warn' : 'fg'}
         />
-        <Tile label="Peladas marcadas" value={String(summary?.upcomingGames ?? 0)} />
+        <Tile
+          label="Peladas a aprovar"
+          value={String(pendingGames.length)}
+          tone={pendingGames.length ? 'warn' : 'fg'}
+        />
         <Tile
           label="A receber"
           value={brl(summary?.totalPendingAmount ?? 0)}
@@ -103,6 +127,51 @@ export default function AdminPage() {
       </div>
 
       <ErrorText>{error}</ErrorText>
+
+      {/* Peladas marcadas pela turma, esperando liberação */}
+      {pendingGames.length > 0 && (
+        <section className="panel p-4">
+          <SectionTitle>Peladas a aprovar · {pendingGames.length}</SectionTitle>
+
+          <ul className="stagger divide-y-2 divide-line-soft">
+            {pendingGames.map((game) => (
+              <li key={game.id} className="flex items-center gap-3 py-3">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border-2 border-warn/40 text-warn">
+                  <CalendarClock className="h-4 w-4" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold">{game.title}</p>
+                  <p className="truncate text-xs text-fg-dim">
+                    {new Intl.DateTimeFormat('pt-BR', {
+                      weekday: 'short',
+                      day: '2-digit',
+                      month: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    }).format(new Date(game.date))}{' '}
+                    · {game.location.name}
+                    {game.whatsapp ? ' · pelo WhatsApp' : ''}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setGameApproval.mutate({ id: game.id, action: 'approve' })}
+                  aria-label={`Aprovar ${game.title}`}
+                  className="btn border-go bg-go px-3 text-canvas hover:bg-go/80"
+                >
+                  <Check className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => setGameApproval.mutate({ id: game.id, action: 'reject' })}
+                  aria-label={`Recusar ${game.title}`}
+                  className="btn-danger px-3"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* Aprovações */}
       <section className="panel p-4">
