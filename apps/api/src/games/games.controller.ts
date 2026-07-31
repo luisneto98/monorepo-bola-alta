@@ -26,8 +26,9 @@ export class GamesController {
   list(
     @CurrentUser() user: AuthUser,
     @Query('scope') scope: 'upcoming' | 'past' | 'all' = 'upcoming',
+    @Query('chatId') chatId?: string,
   ) {
-    return this.games.list(scope, user.id);
+    return this.games.list(scope, user.id, chatId);
   }
 
   @Get(':id')

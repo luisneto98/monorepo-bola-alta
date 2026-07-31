@@ -25,6 +25,23 @@ export class GameLocation {
   mapsUrl?: string;
 }
 
+/**
+ * Grupo de WhatsApp de onde a pelada veio.
+ *
+ * Guardar o vínculo é o que permite ao bot mandar as atualizações no lugar certo
+ * (lista mudou, pelada confirmada, cancelada) sem ninguém dizer para onde.
+ */
+@Schema({ _id: false })
+export class GameWhatsapp {
+  /** ID do chat, sempre terminado em `@g.us` para grupos. */
+  @Prop({ required: true, trim: true })
+  chatId: string;
+
+  /** Nome do grupo na hora do vínculo — só para exibição. */
+  @Prop({ trim: true })
+  groupName?: string;
+}
+
 @Schema({ timestamps: true, collection: 'games' })
 export class Game {
   @Prop({ required: true, trim: true })
@@ -61,6 +78,10 @@ export class Game {
   @Prop({ type: String, required: true })
   createdBy: string;
 
+  /** Preenchido quando a pelada nasce (ou é vinculada) a um grupo de WhatsApp. */
+  @Prop({ type: GameWhatsapp })
+  whatsapp?: GameWhatsapp;
+
   @Prop({ type: Date })
   canceledAt?: Date;
 
@@ -69,3 +90,6 @@ export class Game {
 }
 
 export const GameSchema = SchemaFactory.createForClass(Game);
+
+// O bot consulta "qual a próxima pelada deste grupo?" a cada mensagem.
+GameSchema.index({ 'whatsapp.chatId': 1, date: -1 });

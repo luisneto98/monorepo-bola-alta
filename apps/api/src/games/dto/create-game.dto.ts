@@ -24,6 +24,17 @@ class LocationDto {
   mapsUrl?: string;
 }
 
+class WhatsappDto {
+  /** ID do chat no WhatsApp; grupos terminam em `@g.us`. */
+  @IsString()
+  @MinLength(5)
+  chatId: string;
+
+  @IsOptional()
+  @IsString()
+  groupName?: string;
+}
+
 export class CreateGameDto {
   @IsString()
   @MinLength(3, { message: 'Dê um nome para a pelada.' })
@@ -60,4 +71,10 @@ export class CreateGameDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  /** Grupo de onde a pelada veio — o bot manda as atualizações nele. */
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => WhatsappDto)
+  whatsapp?: WhatsappDto;
 }

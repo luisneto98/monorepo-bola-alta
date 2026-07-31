@@ -32,6 +32,8 @@ export interface GameView {
   status: GameStatus;
   notes?: string;
   cancelReason?: string;
+  /** Grupo de WhatsApp vinculado — onde o bot manda as atualizações. */
+  whatsapp?: { chatId: string; groupName?: string };
   confirmedCount: number;
   waitlistCount: number;
   spotsLeft: number;
@@ -160,14 +162,21 @@ export class GamesService {
 
   // ---------------------------------------------------------------- Leitura
 
-  async list(scope: 'upcoming' | 'past' | 'all', userId: string) {
+  async list(
+    scope: 'upcoming' | 'past' | 'all',
+    userId: string,
+    chatId?: string,
+  ) {
     const now = new Date();
-    const filter =
+    const byScope =
       scope === 'upcoming'
         ? { date: { $gte: now }, status: { $ne: GameStatus.FINISHED } }
         : scope === 'past'
           ? { $or: [{ date: { $lt: now } }, { status: GameStatus.FINISHED }] }
           : {};
+
+    // O bot pergunta "qual a pelada deste grupo?" — sem isso ele veria as de todos.
+    const filter = chatId ? { ...byScope, 'whatsapp.chatId': chatId } : byScope;
 
     const games = await this.gameModel
       .find(filter)
@@ -745,6 +754,7 @@ export class GamesService {
       status: game.status,
       notes: game.notes,
       cancelReason: game.cancelReason,
+      whatsapp: game.whatsapp,
       confirmedCount: confirmed.length,
       waitlistCount: waitlist.length,
       spotsLeft: Math.max(0, game.maxPlayers - confirmed.length),

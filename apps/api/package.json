@@ -9,7 +9,8 @@
     "start:prod": "node dist/main",
     "seed": "ts-node -r tsconfig-paths/register src/scripts/seed.ts",
     "vapid": "node -e \"const w=require('web-push');const k=w.generateVAPIDKeys();console.log('VAPID_PUBLIC_KEY='+k.publicKey);console.log('VAPID_PRIVATE_KEY='+k.privateKey)\"",
-    "lint": "eslint \"src/**/*.ts\" --fix"
+    "lint": "eslint \"src/**/*.ts\" --fix",
+    "bot:user": "ts-node -r tsconfig-paths/register src/scripts/create-bot-user.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.0",
