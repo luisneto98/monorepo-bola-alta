@@ -308,7 +308,7 @@ export class GamesService {
 
     const users = await this.userModel
       .find({ status: UserStatus.APPROVED })
-      .select('name')
+      .select('name email')
       .lean();
 
     // Um nome pode casar com mais de um cadastrado; guardamos todos para detectar
@@ -344,8 +344,13 @@ export class GamesService {
           entry,
           key,
           user: null,
+          // Só o nome não ajuda ("Eduardo ou Eduardo"): manda algo que distinga.
           ambiguousWith:
-            candidates.length > 1 ? candidates.map((u) => u.name) : undefined,
+            candidates.length > 1
+              ? candidates.map(
+                  (u: any) => `${u.name}${u.email ? ` (${u.email})` : ''}`,
+                )
+              : undefined,
         });
       }
     }
